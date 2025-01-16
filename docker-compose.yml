@@ -1,0 +1,52 @@
+version: '3.0'
+
+services:
+  spring_database:
+    image: mysql
+    container_name: spring_database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MY_SQL_ROOT}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    healthcheck:      
+      test: ["CMD", "mysqladmin", "ping", "-h", "spring_database"]  # Or use the hostname of your MySQL container      
+      interval: 10s      
+      timeout: 10s      
+      retries: 3         
+    ports:
+      - 3308:3306
+    volumes:
+     - dockerAngularSpringDatabaseData:/var/lib/mysql
+    networks:
+     - 3tierNetwork
+     
+  springapp:
+    image: 172.27.59.80:8082/akshay-github-actions/gha-springapp:${RUN_NUMBER}
+    container_name: springapp
+    ports:
+      - 8085:8080
+    depends_on:
+      spring_database:
+                  condition: service_healthy     
+    environment:      
+      SPRING_DATASOURCE_URL: jdbc:mysql://spring_database:3306/${MYSQL_DATABASE}?allowPublicKeyRetrieval=true&useSSL=false      
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}      
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+     - 3tierNetwork
+      
+  angularapp:
+    image: 172.27.59.80:8082/akshay-github-actions/gha-angularapp/:${RUN_NUMBER}
+    container_name: angularapp
+    ports: 
+      - 4200:80
+    depends_on:
+      - springapp
+    networks:
+      - 3tierNetwork
+      
+volumes:
+  dockerAngularSpringDatabaseData:  
+networks:
+  3tierNetwork:
